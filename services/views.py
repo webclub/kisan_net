@@ -33,6 +33,7 @@ def register(request):
 	try:
 		dob = give_date(request.POST.get('dob',None))
 		longitude = request.POST.get('longitude',None)
+		# print longitude
 		if longitude:
 			longitude = float(longitude)
 		latitude = request.POST.get('latitude',None)
@@ -104,10 +105,10 @@ def listlabour(request):
 			record = {
 						'id':labour_request.id,
 						'count':labour_request.count,
-						'from_date':labour_request.from_date,
-						'to_date':labour_request.to_date,
+						'from_date':str(labour_request.from_date),
+						'to_date':str(labour_request.to_date),
 						'fulfilled':labour_request.fulfilled,
-						'timestamp':labour_request.time_queued
+						'timestamp':str(labour_request.time_queued)
 					 }
 			result.append(record)
 		print json.dumps(result,indent = 4)

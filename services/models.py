@@ -1,6 +1,7 @@
 from django.db import models,connection
 from django.contrib.auth.models import User
 from jsonfield import JSONField
+from datetime import datetime
 import json
 
 class PostManager(models.Manager):
@@ -8,7 +9,7 @@ class PostManager(models.Manager):
 	# also see if JOIN is possible but take care of null values
 	def cmp(a,b):
 		# custom compare function for result list sort
-		return (a['distance'] < b['distance']) or (a['distance']==b['distance'])
+		return (a['distance'] < b['distance']) or (a['distance']==b['distance'] and datetime(a['timestamp']) > datetime(b['timestamp']))
 
 	def nearby_put_posts(self, longitude, latitude, use_miles=False):
 		if use_miles:
@@ -30,9 +31,12 @@ class PostManager(models.Manager):
 		result = [
 			{'user':{'name':post.user.get_full_name(),'id':post.user_id},
 			'distance':ids[post.user_id],
-			'post':{'message':post.message,'image':post.photo.path if post.photo else None},
-			'timestamp':str(post.timestamp)} for post in posts]		
+			'post':{'message':post.message,'image':post.photo.url if post.photo else None},
+			'timestamp':post.timestamp} for post in posts]		
 		result.sort(cmp)
+		# print 'CHECK'*5
+		for i in range(len(result)):
+			result[i]['timestamp'] = str(result[i]['timestamp'])
 		return result
 	
 	def nearby_get_posts(self, longitude, latitude, use_miles=False):
@@ -55,7 +59,7 @@ class PostManager(models.Manager):
 		result = [
 			{'user':{'name':post.user.get_full_name(),'id':post.user_id},
 			'distance':ids[post.user_id],
-			'post':{'message':post.message,'image':post.photo.path if post.photo else None},
+			'post':{'message':post.message,'image':post.photo.url if post.photo else None},
 			'timestamp':str(post.timestamp)} for post in posts]		
 		result.sort(cmp)
 		return result
