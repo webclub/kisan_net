@@ -32,11 +32,15 @@ def register(request):
 	try:
 		dob = give_date(request.POST.get('dob',None))
 		longitude = request.POST.get('longitude',None)
+		if longitude:
+			longitude = float(longitude)
 		latitude = request.POST.get('latitude',None)
+		if latitude:
+			latitude = float(latitude)
 		location_name = request.POST.get('location_name',None)
 		location = json.dumps({'longitude':longitude,'latitude':latitude,'location_name':location_name})
 		token = md5.new(phone[::-1]+str(user.id)).hexdigest()
-		profile = UserProfile.objects.create(user_id = user.id,dob = dob,phone = phone,location = location,token = token)
+		profile = UserProfile.objects.create(user_id = user.id,dob = dob,phone = phone,location = location,longitude = longitude,latitude = latitude,token = token)
 	except:
 		print traceback.format_exc()
 		return HttpResponse(json.dumps({'registered':False,'user_obj':True,'success':False}))
@@ -93,6 +97,7 @@ def listlabour(request):
 		token = request.POST['token']
 		user = UserProfile.objects.get(token = token)
 		labour_requests = LabourRequests.objects.filter(user_id = user.user_id)
+		# QUESTION: Whether to store old requests or not.
 		result = []
 		for labour_request in labour_requests:
 			record = {
@@ -100,7 +105,7 @@ def listlabour(request):
 						'count':labour_request.count,
 						'from_date':labour_request.from_date,
 						'to_date':labour_request.to_date,
-						'fulfilled':labour_request.fulfilled
+						'fulfilled':labour_request.fulfilled,
 						'timestamp':labour_request.time_queued
 					 }
 			result.append(record)
@@ -147,3 +152,50 @@ def del_debug(request):
 	# used to delete pre mature registrations
 	delete_user(request.POST['phone'])
 	return HttpResponse('User deleted')
+
+@require_POST
+@csrf_exempt
+@user_authenticated
+def post_put_request(request):
+	try:
+		token = request.POST['token']
+		user = UserProfile.objects.get(token = token)
+		message = request.POST.get('message',None)
+		photo = request.FILES['photo']
+		post_put = put_requests.objects.create(user = user.user_id,message = json.dumps({'message':message}),photo = photo)
+		post_put.save()
+		return HttpResponse(json.dumps({'request_no':post_put.id,'success':True}))
+	except:
+		print traceback.format_exc()
+		return HttpResponse(json.dumps({'success':False}))
+
+@require_POST
+@csrf_exempt
+@user_authenticated
+def post_get_request(request):
+	try:
+		token = request.POST['token']
+		user = UserProfile.objects.get(token = token)
+		message = request.POST.get('message',None)
+		photo = request.FILES.get('photo',None)
+		post_get = get_requests.objects.create(user = user.user_id,message = json.dumps({'message':message}),photo = photo)
+		post_get.save()
+		return HttpResponse(json.dumps({'request_no':post_get.id,'success':True}))
+	except:
+		print traceback.format_exc()
+		return HttpResponse(json.dumps({'success':False}))
+
+@require_POST
+@csrf_exempt
+@user_authenticated
+def fetch_post_requests(request,offset):
+	try:
+		# offset is the no. of posts to skip in the main result list
+		token = request.POST['token']
+		user = UserProfile.objects.get(token = token)
+		posts = put_requests.nearby_posts(longitude = user.longitude,latitude = user.latitude)
+		posts = posts[offset:offset+20]
+		# return HttpResponse(json.dumps({'posts':json.dumps(result),'success':True}))
+	except:
+		print traceback.format_exc()
+		return HttpResponse(json.dumps({'success':False}))
