@@ -12,7 +12,7 @@ def validate_date(_date):
 def give_date(dob):
 	if dob:
 		dob_new = datetime.strptime(dob,"%d/%m/%Y")
-		print 'dob_new ' + dob_new
+		print 'dob_new ' + str(dob_new)
 		return dob_new
 	else:
 		return None

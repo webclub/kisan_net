@@ -3,6 +3,7 @@ from django.shortcuts import render,render_to_response
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from django.core.files import File
 from models import *
 from django.contrib.auth.models import User
 import urllib,json
@@ -161,8 +162,14 @@ def post_put_request(request):
 		token = request.POST['token']
 		user = UserProfile.objects.get(token = token)
 		message = request.POST.get('message',None)
-		photo = request.FILES['photo']
-		post_put = put_requests.objects.create(user = user.user_id,message = json.dumps({'message':message}),photo = photo)
+		photo = request.FILES.get('photo',None)
+		post_put = put_requests.objects.create(user_id = user.user_id,message = message)
+		if photo:
+			x = photo.name
+			y = x.split('.')
+			photo_name = str(post_put.id)+'.'+y[1]
+			print photo_name
+			post_put.photo.save(photo_name,File(photo))
 		post_put.save()
 		return HttpResponse(json.dumps({'request_no':post_put.id,'success':True}))
 	except:
@@ -173,14 +180,27 @@ def post_put_request(request):
 @csrf_exempt
 @user_authenticated
 def post_get_request(request):
+	token = request.POST['token']
+	user = UserProfile.objects.get(token = token)
+	message = request.POST.get('message',None)
+	# photo = request.FILES.get('photo',None)
+	post_get = get_requests.objects.create(user_id = user.user_id,message = message)
+	return HttpResponse(json.dumps({'request_no':post_get.id,'success':True}))
+	# except:
+	# 	print traceback.format_exc()
+	# 	return HttpResponse(json.dumps({'success':False}))
+
+@require_POST
+@csrf_exempt
+@user_authenticated
+def fetch_put_requests(request,offset = 0):
 	try:
+		# offset is the no. of posts to skip in the main result list
 		token = request.POST['token']
 		user = UserProfile.objects.get(token = token)
-		message = request.POST.get('message',None)
-		photo = request.FILES.get('photo',None)
-		post_get = get_requests.objects.create(user = user.user_id,message = json.dumps({'message':message}),photo = photo)
-		post_get.save()
-		return HttpResponse(json.dumps({'request_no':post_get.id,'success':True}))
+		posts = put_requests.objects.nearby_put_posts(longitude = user.longitude,latitude = user.latitude)
+		posts = posts[int(offset):int(offset)+20]
+		return HttpResponse(json.dumps({'posts':posts,'success':True}))
 	except:
 		print traceback.format_exc()
 		return HttpResponse(json.dumps({'success':False}))
@@ -188,14 +208,14 @@ def post_get_request(request):
 @require_POST
 @csrf_exempt
 @user_authenticated
-def fetch_post_requests(request,offset):
+def fetch_get_requests(request,offset = 0):
 	try:
 		# offset is the no. of posts to skip in the main result list
 		token = request.POST['token']
 		user = UserProfile.objects.get(token = token)
-		posts = put_requests.nearby_posts(longitude = user.longitude,latitude = user.latitude)
-		posts = posts[offset:offset+20]
-		# return HttpResponse(json.dumps({'posts':json.dumps(result),'success':True}))
+		posts = get_requests.objects.nearby_get_posts(longitude = user.longitude,latitude = user.latitude)
+		posts = posts[int(offset):int(offset)+20]
+		return HttpResponse(json.dumps({'posts':posts,'success':True}))
 	except:
 		print traceback.format_exc()
 		return HttpResponse(json.dumps({'success':False}))
